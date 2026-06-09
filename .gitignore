@@ -1,0 +1,25 @@
+# --- Project data must never enter this repo ---
+
+# Excel workbooks (the live source-of-truth contains project data).
+# A deliberately-scrubbed starter workbook may be force-added under templates/.
+*.xlsm
+*.xlsb
+*.xls
+~$*
+
+# Revizto exports / generated output (contain project GUIDs, names, element data)
+*.vimctst
+*.vimsst
+
+# Scratch / probe / generated artefacts
+*PROBE*
+*GENERATED*
+*_GENERATED*
+/scratch/
+/tmp/
+
+# OS / editor cruft
+Thumbs.db
+.DS_Store
+desktop.ini
+*.tmp
