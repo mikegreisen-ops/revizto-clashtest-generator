@@ -1,17 +1,18 @@
 # templates/
 
-This folder will hold a **scrubbed, ready-to-use starter workbook** — the public artifact users
-download to begin.
+This folder will hold a **ready-to-use starter workbook** — the file users download to begin.
 
-It must be a *clean copy* of the generator workbook with **all project-specific data removed**:
+It only needs to be:
 
-- example/placeholder elements only (no real project element list)
-- cleared override grids (clearance / priority / ignore)
-- no real search-set names, GUIDs, or model-set references
-- no author email or project identifiers embedded in any macro template constants
+- a workbook with one sheet named **`Sets`** (header in `A1`, e.g. "Search Set Names"; a few example
+  names in `A2`–`A4` as a guide),
+- with [`../src/modClashLite.bas`](../src/modClashLite.bas) pasted into a standard module,
+- saved as a macro-enabled workbook (`.xlsm`), e.g. `clash-generator-starter.xlsm`.
 
-The live working workbook is **git-ignored** and must never be committed here. When the starter
-workbook is ready, force-add it explicitly:
+The `Tests` sheet is created automatically by the macro, so it doesn't need to exist beforehand.
+
+Make sure the starter contains **no real project data** — only placeholder example names. The live
+working workbook is git-ignored and must never be committed. When the starter is ready, force-add it:
 
 ```
 git add -f templates/clash-generator-starter.xlsm

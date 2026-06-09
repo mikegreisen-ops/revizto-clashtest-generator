@@ -1,71 +1,68 @@
-# Revizto Clash-Test & Search-Set Generator
+# Revizto Clash-Test Generator
 
-Generate Revizto **clash tests** (`.vimctst`) and **search sets** (`.vimsst`) in bulk from a single
-Excel workbook — instead of building and naming hundreds of them by hand in Revizto.
+Turn a **list of search-set names** into a full matrix of Revizto **clash tests** (`.vimctst`) —
+one button, instead of creating and naming hundreds of tests by hand.
 
-A BIM coordination project can need *thousands* of clash tests (every discipline pair, at the right
-priority and clearance). Creating and maintaining those by hand is slow and error-prone. This tool
-treats one Excel workbook as the source of truth and emits ready-to-import Revizto files from it.
+A coordination project needs a clash test for every pair of disciplines/elements. Setting those up
+in Revizto is slow and repetitive. This tool takes your list of search sets, builds every pairing,
+and writes a `.vimctst` you import straight into Revizto.
 
-> ⚠️ **Unofficial.** These file formats are **reverse-engineered**, not documented or supported by
-> Revizto. This project is **not affiliated with or endorsed by Revizto**. Formats can change between
-> Revizto versions. **Always keep backups and work on copies.** Use at your own risk.
+> ⚠️ **Unofficial.** The `.vimctst` format is **reverse-engineered**, not documented or supported by
+> Revizto, and this project is **not affiliated with or endorsed by Revizto**. The format can change
+> between Revizto versions. **Always keep backups and work on copies.** Use at your own risk.
 
 ---
 
-## How it works
+## What it does
 
-The Revizto files are length-delimited **protobuf** with no file-wide checksum, so records can be
-generated and re-imported. Two facts make bulk generation practical:
+```
+Sets sheet (your list of set names)
+        │  GenerateClashTests
+        ▼
+Tests sheet (every pairing, 1v1 / 2v1 / 2v2 / …)  +  Clash Tests.vimctst
+        ▼
+import into Revizto
+```
 
-1. **Clash tests reference their search sets by *name*, not GUID.** On import, Revizto re-matches a
-   test's two sides to existing project sets by the set **name string** — the stored GUID and folder
-   path are cosmetic. So generated tests need only the *names* of the user's sets (no GUID harvest).
-2. **Search-set filter conditions are plain strings.** Category / parameter / name conditions carry
-   no project-specific IDs, so simple sets can be generated from scratch.
+- **In:** one column of search-set names (the `Sets` sheet).
+- **Out:** a `.vimctst` containing one clash test for **every lower-triangular pair, including
+  self-pairs** (so `N` sets → `N·(N+1)/2` tests), plus a `Tests` sheet showing the matrix.
+- **No codes, priorities, or clearances** — just names in, tests out. Set those up in Revizto after.
 
-This means the whole pipeline can run from the workbook alone.
+## Why it works
 
-## The three workflows
+On import, **Revizto re-matches each test's two sides to your project's search sets by the set
+*name*** — the stored GUID and folder path are cosmetic. So the tool only needs your set *names*; it
+fabricates the GUIDs. A name that doesn't match a set imports with a warning and a "re-select from
+list" prompt — so typos are obvious and harmless, never destructive.
 
-| Workflow | You have… | The tool… | Macro |
-|---|---|---|---|
-| **C — Tests only** | search sets already in Revizto, matching your list | generates the clash tests | `modClashGen` |
-| **B — Sets first** | search sets built in Revizto | imports their names into the workbook, then you generate tests | `modImportSets` → `modClashGen` |
-| **A — From scratch** | just a list of elements | generates blank search sets to import, *and* the tests | `modGenSets` → `modClashGen` |
+## Use it
 
-See [`docs/workflows.md`](docs/workflows.md) for the detail.
+1. **Set up the workbook** (once): a sheet named **`Sets`** with a header in `A1` and your search-set
+   names in `A2` downward. Then `Alt+F11` ▸ `Insert ▸ Module`, paste
+   [`src/modClashLite.bas`](src/modClashLite.bas).
+2. **Run** `GenerateClashTests` (`Alt+F8`, or F5 from the editor).
+3. It writes the **`Tests`** sheet (preview of every pair) and saves **`Clash Tests.vimctst`** next to
+   the workbook.
+4. **Import** the `.vimctst` into Revizto. The set names must match your real Revizto sets.
+
+> **OneDrive gotcha:** the macro saves next to the workbook via `ThisWorkbook.Path`. For a workbook in
+> OneDrive/SharePoint that path can be an `https://…` URL that file I/O can't use (run-time error 52).
+> Run from a **local, non-synced folder** (e.g. `C:\Temp\`) and copy the result back.
 
 ## Repository layout
 
 ```
-src/        VBA modules — paste into the workbook (Alt+F11 ▸ Insert ▸ Module)
-docs/       reverse-engineered file-format notes + workflow guide
-templates/  (todo) a scrubbed, ready-to-use starter workbook
+src/modClashLite.bas    the macro — paste into the workbook
+docs/vimctst-format.md  reverse-engineered .vimctst format notes
+templates/              (todo) a ready-to-use starter workbook
 ```
-
-## Install & use
-
-1. Open your generator workbook in Excel.
-2. `Alt+F11` ▸ `Insert ▸ Module`, paste the contents of a file from `src/`. Repeat per module.
-3. Run the relevant macro (e.g. `GenerateClashTests`). The output file lands beside the workbook.
-4. Import the output into Revizto.
-
-> **OneDrive gotcha:** the macros write next to the workbook via `ThisWorkbook.Path`. For a workbook
-> stored in OneDrive/SharePoint that path can be an `https://…` URL that file I/O can't use
-> (run-time error 52). Run from a **local, non-synced folder** (e.g. `C:\Temp\clashgen\`) and copy
-> the result back.
-
-## File formats
-
-- [`docs/vimctst-format.md`](docs/vimctst-format.md) — clash-test set format
-- [`docs/vimsst-format.md`](docs/vimsst-format.md) — search-set format
 
 ## Status
 
-Private / work in progress. Workflows B and C are working; workflow A's set generator is being
-finalised. **Before any public release:** confirm Revizto are comfortable with it, clear any
-employer/IP questions, and scrub all project-specific data from the modules and template.
+Private / work in progress. The generator works. **Before any public release:** confirm Revizto are
+comfortable with it, clear any employer/IP questions, and add a clean starter workbook with no
+project data.
 
 ## License
 
