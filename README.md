@@ -40,11 +40,29 @@ list" prompt — so typos are obvious and harmless, never destructive.
 
 1. **Set up the workbook** (once): a sheet named **`Sets`** with a header in `A1` and your search-set
    names in `A2` downward. Then `Alt+F11` ▸ `Insert ▸ Module`, paste
-   [`src/modClashLite.bas`](src/modClashLite.bas).
+   [`src/modClashLite.bas`](src/modClashLite.bas). To pull names straight from Revizto instead of
+   typing them, also paste [`src/modImportSets.bas`](src/modImportSets.bas) (see below).
 2. **Run** `GenerateClashTests` (`Alt+F8`, or F5 from the editor).
 3. It writes the **`Tests`** sheet (preview of every pair) and saves **`Clash Tests.vimctst`** next to
    the workbook.
 4. **Import** the `.vimctst` into Revizto. The set names must match your real Revizto sets.
+
+### Don't want to type the names? Import them from Revizto
+
+Paste [`src/modImportSets.bas`](src/modImportSets.bas) into a second module and run
+`ImportSetsFromVimsst`. It shows a file picker — point it at a **`.vimsst`** search-set export from
+Revizto, and it fills the **`Sets`** sheet for you:
+
+- **column A** — the set name (exactly as stored; this is what the generator uses),
+- **column B** — the Revizto folder each set lived under (reference only — the generator ignores it;
+  handy for spotting and deleting sets you don't want).
+
+Existing names in column A are replaced (you're asked to confirm first). Then carry on at step 2.
+Because names must match your real Revizto sets exactly, importing them is also the safest way to
+avoid typos.
+
+To try it without your own export, point the picker at the bundled example
+[`templates/Testing searchsets.vimsst`](templates/Testing%20searchsets.vimsst).
 
 > **OneDrive gotcha:** the macro saves next to the workbook via `ThisWorkbook.Path`. For a workbook in
 > OneDrive/SharePoint that path can be an `https://…` URL that file I/O can't use (run-time error 52).
@@ -53,9 +71,11 @@ list" prompt — so typos are obvious and harmless, never destructive.
 ## Repository layout
 
 ```
-src/modClashLite.bas    the macro — paste into the workbook
-docs/vimctst-format.md  reverse-engineered .vimctst format notes
-templates/              (todo) a ready-to-use starter workbook
+src/modClashLite.bas              the generator — paste into the workbook
+src/modImportSets.bas             optional: import set names from a Revizto .vimsst export
+docs/vimctst-format.md            reverse-engineered .vimctst format notes
+templates/Example.xlsm            ready-to-use starter workbook (both macros pasted in)
+templates/Testing searchsets.vimsst  example .vimsst export to try the import with
 ```
 
 ## Status

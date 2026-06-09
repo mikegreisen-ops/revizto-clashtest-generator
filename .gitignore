@@ -10,6 +10,8 @@
 # Revizto exports / generated output (contain project GUIDs, names, element data)
 *.vimctst
 *.vimsst
+# Exception: a scrubbed, shareable example export that ships with the starter
+!templates/Testing searchsets.vimsst
 
 # Scratch / probe / generated artefacts
 *PROBE*
