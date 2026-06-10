@@ -80,10 +80,14 @@ templates/Testing searchsets.vimsst  example .vimsst export to try the import wi
 
 ## Status
 
-Private / work in progress. The generator works. **Before any public release:** confirm Revizto are
-comfortable with it, clear any employer/IP questions, and add a clean starter workbook with no
-project data.
+Working and approved for sharing. The generator and the `.vimsst` name-import both work, and a clean
+starter workbook (`templates/Example.xlsm`) with example-only data ships with the repo. **Revizto**
+(format) and **Architectus** (employer/IP) have both signed off on publishing.
+
+Possible next step: generating the search sets themselves (not just the tests). Proven in PowerShell,
+but the set settings are involved enough that a VBA port hasn't been worth it yet — open an issue if
+you'd find it useful.
 
 ## License
 
-[MIT](LICENSE) — pending IP review (see Status).
+[MIT](LICENSE).
