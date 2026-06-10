@@ -68,6 +68,20 @@ To try it without your own export, point the picker at the bundled example
 > OneDrive/SharePoint that path can be an `https://…` URL that file I/O can't use (run-time error 52).
 > Run from a **local, non-synced folder** (e.g. `C:\Temp\`) and copy the result back.
 
+### Clash settings (tolerance & grouping)
+
+Every generated test carries the **same** clearance, tolerance and grouping, cloned from the template
+baked into the macro (the `HEX_TAIL6` constant). They are **not** per-test or project-specific, and
+they are **non-standard** — sampled from one real test, so check them before relying on the results.
+Two ways to change them:
+
+- **After import**, select all the tests in Revizto and bulk-edit tolerance/grouping there (the
+  intended workflow — set them uniformly once).
+- **At the source**, re-harvest `HEX_TAIL6` from a test configured with your own defaults.
+
+Driving these from a couple of extra columns in the `Sets` sheet would be a small change — open an
+issue if that'd be useful.
+
 ## Repository layout
 
 ```
