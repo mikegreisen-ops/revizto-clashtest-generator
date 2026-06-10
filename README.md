@@ -70,10 +70,11 @@ To try it without your own export, point the picker at the bundled example
 
 ### Clash settings (tolerance & grouping)
 
-Every generated test carries the **same** clearance, tolerance and grouping, cloned from the template
-baked into the macro (the `HEX_TAIL6` constant). They are **not** per-test or project-specific, and
-they are **non-standard** — sampled from one real test, so check them before relying on the results.
-Two ways to change them:
+Every generated test carries the **same** clearance, tolerance and grouping — the settings from a
+**single example test**, copied onto every test (baked into the macro as the `HEX_TAIL6` constant).
+They are **not** per-test, project-specific, or drawn from any considered template — just one test's
+settings replicated. They are also **non-standard**. Treat them as placeholders: review and set them
+deliberately before relying on the results. Two ways to change them:
 
 - **After import**, select all the tests in Revizto and bulk-edit tolerance/grouping there (the
   intended workflow — set them uniformly once).
