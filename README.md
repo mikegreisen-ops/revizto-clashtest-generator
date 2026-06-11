@@ -66,7 +66,7 @@ per row, from row 2). Two ways:
 > **Already have a test list or matrix?** The `Tests` sheet is there from the moment you open the
 > workbook — just **paste your rows under the headers** (Test Name as `"Set A vs Set B"`, plus
 > Tolerance / Clearance / Priority / Stamp) and skip straight to `ExportClashTests`. No need to run
-> `BuildTestList` at all. Want a clean blank sheet to paste into? Run **`NewTestsSheet`**.
+> `BuildTestList` at all.
 
 ---
 
@@ -80,7 +80,6 @@ On the `Instructions` sheet (or via `Alt+F8` by the macro name):
 | **Export Clash Tests** — `ExportClashTests` | `Tests` sheet → a `.vimctst` (the file you import into Revizto) |
 | **Import Clash Tests** — `ImportClashTests` | an existing `.vimctst` → `Tests` sheet (to edit tests you already have) |
 | **Import Set Names** — `ImportSetsFromVimsst` | a `.vimsst` → fills the `Sets` list with your set names |
-| **New Blank Tests Sheet** — `NewTestsSheet` | a blank, formatted `Tests` sheet to paste your own list into |
 
 ## The `Tests` sheet
 

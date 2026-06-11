@@ -117,7 +117,6 @@ try {
     $btns = @(
         @('Import Set Names',  'ImportSetsFromVimsst'),
         @('Build Test List',   'BuildTestList'),
-        @('New Blank Tests Sheet', 'NewTestsSheet'),
         @('Export Clash Tests','ExportClashTests'),
         @('Import Clash Tests','ImportClashTests')
     )

@@ -13,7 +13,7 @@ A **ready-to-use starter workbook** — the file users download to begin.
   [`../src/modImportSets.bas`](../src/modImportSets.bas) pasted into standard modules,
 - saved as a macro-enabled workbook (`.xlsm`).
 
-`BuildTestList` / `ImportClashTests` / `NewTestsSheet` also (re)create the `Tests` sheet on demand.
+`BuildTestList` and `ImportClashTests` also (re)create the `Tests` sheet on demand.
 
 `Testing searchsets.vimsst` is an **example Revizto search-set export** (shareable, no project data).
 Use it to try the name import: run `ImportSetsFromVimsst` and point the picker at this file — it fills

@@ -26,7 +26,7 @@
 '  So: run BuildTestList, adjust Tol/Clr/Priority (or delete rows you don't want), then
 '  run ExportClashTests.
 '  ALREADY HAVE A LIST? The Tests sheet exists from the start - just paste your rows under the
-'  headers (or run NewTestsSheet for a fresh blank one), then ExportClashTests. No BuildTestList needed.
+'  headers, then ExportClashTests. No BuildTestList needed.
 '
 '  Revizto re-matches each side to a project search set BY NAME on import, so the names
 '  must match your real Revizto set names. GUIDs are fabricated.
@@ -178,34 +178,6 @@ Public Sub BuildTestList()
     MsgBox "Built " & total & " tests from " & n & " sets in " & Format(Timer - t0, "0.0") & "s." & vbCrLf & vbCrLf & _
            "Adjust Tolerance / Clearance / Priority / Stamp on the '" & SHEET_TESTS & "' sheet (or delete rows you " & _
            "don't want), then run ExportClashTests.", vbInformation
-End Sub
-
-
-' ===================== START A BLANK TESTS SHEET (paste your own list) =====================
-' For when you already have a test list/matrix to paste in: makes an empty, formatted Tests sheet.
-' Paste your rows under the headers (Test Name as "SetA vs SetB", plus Tolerance/Clearance/Priority/
-' Stamp), then run ExportClashTests. (BuildTestList builds the pairings for you instead.)
-Public Sub NewTestsSheet()
-    Dim wsT As Worksheet
-    On Error Resume Next
-    Set wsT = ThisWorkbook.Worksheets(SHEET_TESTS)
-    On Error GoTo 0
-    If Not wsT Is Nothing Then
-        If wsT.Cells(wsT.Rows.Count, "A").End(xlUp).Row >= 2 Then
-            If MsgBox("The '" & SHEET_TESTS & "' sheet already has rows - clear it and start blank?", _
-                      vbExclamation Or vbOKCancel, "Reset Tests sheet?") <> vbOK Then Exit Sub
-        End If
-    End If
-    Dim su As Boolean: su = Application.ScreenUpdating
-    Application.ScreenUpdating = False
-    Set wsT = EnsureSheet(SHEET_TESTS)
-    wsT.Cells.Clear
-    LayOutTestsSheet wsT
-    Application.ScreenUpdating = su
-    wsT.Activate
-    MsgBox "Blank '" & SHEET_TESTS & "' sheet ready." & vbCrLf & vbCrLf & _
-           "Paste your tests under the headers - Test Name as ""SetA vs SetB"", plus Tolerance / " & _
-           "Clearance / Priority / Stamp - then run ExportClashTests.", vbInformation
 End Sub
 
 
@@ -753,8 +725,8 @@ End Sub
 
 
 ' ===================== byte / protobuf / guid helpers =====================
-' Write the Tests-sheet headers and apply all formatting (BuildTestList, ImportClashTests and
-' NewTestsSheet all share this). Set A/Set B live hidden far right; everything visible is A:F.
+' Write the Tests-sheet headers and apply all formatting (BuildTestList and ImportClashTests
+' share this). Set A/Set B live hidden far right; everything visible is A:F.
 Private Sub LayOutTestsSheet(ByVal wsT As Worksheet)
     wsT.Range("A1:F1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp", "Type")
     wsT.Cells(1, COL_SETA).Value = "Set A"
