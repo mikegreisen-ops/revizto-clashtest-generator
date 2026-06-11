@@ -51,20 +51,37 @@ way — by value/code, not GUID.)
 | Col | Header | Meaning | Default |
 |---|---|---|---|
 | A | **Test Name** | `"<Set A> vs <Set B>"` — rename freely, it becomes the test's name | — |
-| B | **Tol (mm)** | tolerance distance (mm) | `25` |
-| C | **Clr (mm)** | clearance distance (mm) | *(blank)* |
+| B | **Tolerance (mm)** | tolerance distance (mm) — *centred* | `25` |
+| C | **Clearance (mm)** | clearance distance (mm) — *centred* | *(blank)* |
 | D | **Priority** | `Trivial` / `Minor` / `Major` / `Critical` / `Blocker` | `Minor` |
-| E, F | **Set A / Set B** | the two search sets this row clashes — *hidden helper columns*, read by export | — |
+| E | **Stamp** | Revizto stamp code, e.g. `0AR` (binds by code; blank = no stamp) | *(blank)* |
+| Y, Z | **Set A / Set B** | the two search sets this row clashes — *hidden helper columns parked far right*, read by export | — |
 
 - **Tolerance and clearance are opposite functions** — a test is one or the other, never both. If any
   row has **both** Tol and Clr filled, `ExportClashTests` **stops and lists those rows**; nothing is
   written until you clear one of the two on each.
 - **Blank Tol and Clr** → no proximity check. **Blank / `None` priority** → no priority.
+- **Stamp codes are CASE-SENSITIVE** — `0AR` ≠ `0ar`. The code must match a stamp code that already
+  exists in your Revizto project exactly (binds by code, like sets bind by name) or no stamp attaches.
 - **Grouping** is fixed at **15000 mm** on every test (Revizto manages grouping globally), so it has no
   column.
 - Distances are stored in the file in **feet**; the macro converts mm for you.
 - Re-running `BuildTestList` **preserves** any Tol/Clr/Priority you've edited (matched by Test Name)
   and refreshes the pair list from `Sets`. Delete rows you don't want before exporting.
+
+## Get the workbook (no GitHub account needed)
+
+You don't need Git or a GitHub login — just one file:
+
+1. Open [`templates/Example.xlsm`](templates/Example.xlsm) on GitHub and click **Download raw file**
+   (the download icon near the top-right of the file view). That single workbook has both macros built in.
+   *(Or use the green **Code ▸ Download ZIP** button to grab everything — but you only need the xlsm.)*
+2. **Unblock it.** Windows blocks macros in files downloaded from the internet: right-click the
+   downloaded `.xlsm` → **Properties** → tick **Unblock** at the bottom of the General tab → **OK**.
+3. Open it and choose **Enable Content / Enable Macros** when Excel prompts.
+
+> If you skip the Unblock step, Excel shows a red *"macros have been blocked"* banner and the macros
+> won't run (and `BuildTestList` etc. may not appear in `Alt+F8`). It's not broken — just blocked.
 
 ## Use it
 
@@ -75,7 +92,7 @@ search-set names in `A2` downward, then `Alt+F11` ▸ `Insert ▸ Module` and pa
 for the `.vimsst` name import).
 
 1. **`BuildTestList`** (`Alt+F8`) — fills the `Tests` sheet with every pair + default Tol/Clr/Priority.
-2. **Adjust** Tol / Clr / Priority on the `Tests` sheet (drive them from your own matrix), and delete
+2. **Adjust** Tol / Clr / Priority / Stamp on the `Tests` sheet (drive them from your own matrix), and delete
    any rows you don't want.
 3. **`ExportClashTests`** — writes **`Clash Tests.vimctst`** next to the workbook.
 4. **Import** the `.vimctst` into Revizto. The set names must match your real Revizto sets.
@@ -122,13 +139,13 @@ setting; the workbook must be closed). Point it at another workbook with `-Workb
 ## Status
 
 Working. Generate, import/round-trip and the `.vimsst` name-import all work; per-test tolerance,
-clearance and priority are decoded and written from the `Tests` sheet. A clean starter workbook with
-example-only data ships with the repo. **Revizto** (format) and **Architectus** (employer/IP) have both
-signed off on publishing.
+clearance, priority and stamps are decoded and written from the `Tests` sheet. A clean starter workbook
+with example-only data ships with the repo. **Revizto** (format) and **Architectus** (employer/IP) have
+both signed off on publishing.
 
-Decoded but not surfaced in this lite tool: **grouping** (fixed at 15000 mm here), **stamps**, and
-**directional clearance** (separate vertical/horizontal distances in one test). Open an issue if you'd
-find any of them useful.
+Decoded but not surfaced in this lite tool: **grouping** (fixed at 15000 mm here) and **directional
+clearance** (separate vertical/horizontal distances in one test). Open an issue if you'd find either
+useful.
 
 ## License
 

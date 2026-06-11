@@ -4,12 +4,14 @@
 '  The SHAREABLE tool. No matrix engine. Sheets:
 '     "Sets"   - column A: your search-set names (one per row, from row 2). Header in A1.
 '     "Tests"  - written by BuildTestList; read by ExportClashTests. Columns:
-'                   A  Test Name   "<SetA> vs <SetB>"  (rename freely; it's the test's name)
-'                   B  Tol (mm)    tolerance distance   (default 25)
-'                   C  Clr (mm)    clearance distance   (default blank)
-'                   D  Priority    Trivial/Minor/Major/Critical/Blocker (default Minor)
-'                   E  Set A  ) hidden helper columns - the two search sets this row clashes.
-'                   F  Set B  ) Generate reads these; don't normally touch them.
+'                   A  Test Name        "<SetA> vs <SetB>"  (rename freely; it's the test's name)
+'                   B  Tolerance (mm)   tolerance distance   (default 25)
+'                   C  Clearance (mm)   clearance distance   (default blank)
+'                   D  Priority         Trivial/Minor/Major/Critical/Blocker (default Minor)
+'                   E  Stamp            Revizto stamp code, e.g. "0AR" - CASE-SENSITIVE (blank = none)
+'                   (B-E equal width + centred; header row styled - see FormatTestsSheet)
+'                   Y  Set A  ) hidden helper columns parked far right - the two search sets this
+'                   Z  Set B  ) row clashes. Generate reads these; don't normally touch them.
 '                Grouping is fixed at 15000mm on every test (Revizto manages it globally).
 '
 '  TWO STEPS:
@@ -60,12 +62,17 @@ Private Const COL_NAME  As Long = 1             ' A: test name
 Private Const COL_TOL   As Long = 2             ' B: tolerance (mm)
 Private Const COL_CLR   As Long = 3             ' C: clearance (mm)
 Private Const COL_PRIO  As Long = 4             ' D: priority (text)
-Private Const COL_SETA  As Long = 5             ' E: set A name (hidden helper)
-Private Const COL_SETB  As Long = 6             ' F: set B name (hidden helper)
-Private Const N_COLS    As Long = 6
+Private Const COL_STAMP As Long = 5             ' E: stamp code (text, e.g. "0AR"; blank = none)
+' Set A / Set B are hidden helper columns parked FAR to the right (Y/Z) so they're well clear of
+' the editable columns - resizing Priority etc. can't accidentally catch them. Cols F..X stay blank.
+' Keep these indices in sync with the "Y"/"Z" column letters used in FormatTestsSheet.
+Private Const COL_SETA  As Long = 25            ' Y: set A name (hidden helper)
+Private Const COL_SETB  As Long = 26            ' Z: set B name (hidden helper)
+Private Const N_COLS    As Long = 26
 Private Const DEF_TOL   As String = "25"
 Private Const DEF_CLR   As String = ""
 Private Const DEF_PRIO  As String = "Minor"
+Private Const DEF_STAMP As String = ""
 ' Grouping is NOT a column - baked into every test at this default (Revizto manages it globally).
 ' NOTE: Revizto DISPLAYS twice the stored grouping distance, so the export stores GRP_MM / 2
 ' (a stored 7.5m-equivalent shows as 15m). GRP_MM is the value as shown in Revizto.
@@ -130,7 +137,7 @@ Public Sub BuildTestList()
     Dim outData() As Variant: ReDim outData(1 To total, 1 To N_COLS)
     Dim i As Long, j As Long, oi As Long
     Dim nameA As String, nameB As String, testName As String
-    Dim sTol As String, sClr As String, sPrio As String, pvv As Variant
+    Dim sTol As String, sClr As String, sPrio As String, sStamp As String, pvv As Variant
     oi = 0
     For i = 1 To n
         For j = 1 To i
@@ -139,15 +146,16 @@ Public Sub BuildTestList()
             testName = nameA & " vs " & nameB
             If prev.Exists(testName) Then
                 pvv = prev(testName)
-                sTol = pvv(0): sClr = pvv(1): sPrio = pvv(2)
+                sTol = pvv(0): sClr = pvv(1): sPrio = pvv(2): sStamp = pvv(3)
             Else
-                sTol = DEF_TOL: sClr = DEF_CLR: sPrio = DEF_PRIO
+                sTol = DEF_TOL: sClr = DEF_CLR: sPrio = DEF_PRIO: sStamp = DEF_STAMP
             End If
             oi = oi + 1
             outData(oi, COL_NAME) = testName
             outData(oi, COL_TOL) = sTol
             outData(oi, COL_CLR) = sClr
             outData(oi, COL_PRIO) = sPrio
+            outData(oi, COL_STAMP) = sStamp
             outData(oi, COL_SETA) = nameA
             outData(oi, COL_SETB) = nameB
         Next j
@@ -158,14 +166,15 @@ Public Sub BuildTestList()
     Application.ScreenUpdating = False
     Set wsT = EnsureSheet(SHEET_TESTS)
     wsT.Cells.Clear
-    wsT.Range("A1:F1").Value = Array("Test Name", "Tol (mm)", "Clr (mm)", "Priority", "Set A", "Set B")
+    wsT.Range("A1:E1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp")
+    wsT.Cells(1, COL_SETA).Value = "Set A"
+    wsT.Cells(1, COL_SETB).Value = "Set B"
     If total > 0 Then wsT.Range("A2").Resize(total, N_COLS).Value = outData
-    wsT.Columns("A:D").AutoFit
-    wsT.Columns("E:F").Hidden = True
+    FormatTestsSheet wsT
     Application.ScreenUpdating = su
 
     MsgBox "Built " & total & " tests from " & n & " sets in " & Format(Timer - t0, "0.0") & "s." & vbCrLf & vbCrLf & _
-           "Adjust Tol / Clr / Priority on the '" & SHEET_TESTS & "' sheet (or delete rows you " & _
+           "Adjust Tolerance / Clearance / Priority / Stamp on the '" & SHEET_TESTS & "' sheet (or delete rows you " & _
            "don't want), then run ExportClashTests.", vbInformation
 End Sub
 
@@ -188,7 +197,7 @@ Public Sub ExportClashTests()
         MsgBox "The '" & SHEET_TESTS & "' sheet has no test rows. Run BuildTestList first.", vbExclamation
         Exit Sub
     End If
-    Dim rowsArr As Variant: rowsArr = wsT.Range("A2:F" & last).Value
+    Dim rowsArr As Variant: rowsArr = wsT.Range("A2:Z" & last).Value
 
     ' ---- validate: a test may have Tol OR Clr, never both. Stop + list any that have both. ----
     Dim vr As Long, nConflict As Long, conflicts As String, dT As Double, dC As Double, vName As String
@@ -219,9 +228,8 @@ Public Sub ExportClashTests()
     Dim t5len As Long: t5len = UBound(t5pl) + 1
     Dim tail6Len As Long: tail6Len = UBound(tail6) + 1
 
-    Dim clrA As Long, clrB As Long, clrC As Long, modeOff As Long
-    Dim grpOff As Long, prioFlagOff As Long, prioValOff As Long
-    LocateSettings tail6, tail6Len, clrA, clrB, clrC, modeOff, grpOff, prioFlagOff, prioValOff
+    Dim clrA As Long, clrB As Long, clrC As Long, modeOff As Long, grpOff As Long
+    LocateSettings tail6, tail6Len, clrA, clrB, clrC, modeOff, grpOff
     PokeSingle tail6, grpOff, CSng(GRP_MM / 2# / MM_PER_FOOT)   ' bake fixed grouping (Revizto shows 2x the stored value)
 
     ' ---- buffers ----
@@ -234,9 +242,10 @@ Public Sub ExportClashTests()
 
     Dim r As Long, gen As Long, skipped As Long, badPrioCount As Long
     Dim testName As String, nameA As String, nameB As String, pvs As Long
-    Dim sTol As String, sClr As String, sPrio As String
+    Dim sTol As String, sClr As String, sPrio As String, sStamp As String
     Dim gT() As Byte, gM() As Byte, gR() As Byte, nameBytes() As Byte, tailDyn() As Byte
     Dim nlen As Long, body4Len As Long, body6Len As Long, sideALen As Long, sideBLen As Long, k As Long
+    Dim prioVal As Long, known As Boolean, dynLen As Long
 
     For r = 1 To UBound(rowsArr, 1)
         testName = Trim$(CStr(rowsArr(r, COL_NAME) & ""))
@@ -256,6 +265,7 @@ Public Sub ExportClashTests()
                 sTol = CStr(rowsArr(r, COL_TOL) & "")
                 sClr = CStr(rowsArr(r, COL_CLR) & "")
                 sPrio = CStr(rowsArr(r, COL_PRIO) & "")
+                sStamp = Trim$(CStr(rowsArr(r, COL_STAMP) & ""))
 
                 gT = NewGuidBytes(): gM = NewGuidBytes(): gR = NewGuidBytes()
                 nameBytes = AsciiBytes(testName)
@@ -283,22 +293,24 @@ Public Sub ExportClashTests()
                     End If
                 Next k
 
-                ' field6 header + sides
+                ' build the per-test tail FIRST: proximity is a fixed poke, but priority+stamp
+                ' rebuild f10 and change the tail length - so compute body6Len from the result.
+                tailDyn = CloneBytes(tail6, tail6Len)
+                ApplyProximity tailDyn, sTol, sClr, clrA, clrB, clrC, modeOff
+                prioVal = PriorityValue(sPrio, known)
+                If Not known Then badPrioCount = badPrioCount + 1
+                tailDyn = RebuildF10(tailDyn, tail6Len, prioVal, sStamp, dynLen)
+
+                ' field6 header + sides + tail
                 paths(3) = nameA: sideALen = SideLen(paths)
                 paths(3) = nameB: sideBLen = SideLen(paths)
-                body6Len = 2 + 16 + 1 + VLen(sideALen) + sideALen + 1 + VLen(sideBLen) + sideBLen + tail6Len
+                body6Len = 2 + 16 + 1 + VLen(sideALen) + sideALen + 1 + VLen(sideBLen) + sideBLen + dynLen
                 PutB b6, l6, &H32: PutVarint b6, l6, body6Len
                 PutB b6, l6, &HA: PutB b6, l6, &H10: PutArr b6, l6, gR
                 paths(3) = nameA
                 PutB b6, l6, &H12: PutVarint b6, l6, sideALen: PutSide b6, l6, NewGuidBytes(), paths
                 paths(3) = nameB
                 PutB b6, l6, &H1A: PutVarint b6, l6, sideBLen: PutSide b6, l6, NewGuidBytes(), paths
-
-                ' field6 tail with this row's proximity + priority (grouping already baked)
-                tailDyn = CloneBytes(tail6, tail6Len)
-                ApplySettings tailDyn, sTol, sClr, sPrio, _
-                              clrA, clrB, clrC, modeOff, prioFlagOff, prioValOff, _
-                              badPrioCount
                 PutArr b6, l6, tailDyn
 
                 gen = gen + 1
@@ -392,6 +404,7 @@ Public Sub ImportClashTests()
         outData(i, COL_TOL) = tolS
         outData(i, COL_CLR) = clrS
         outData(i, COL_PRIO) = DecodePriority(b, f6recs(i))
+        outData(i, COL_STAMP) = DecodeStamp(b, f6recs(i))
         outData(i, COL_SETA) = setA
         outData(i, COL_SETB) = setB
     Next i
@@ -401,15 +414,16 @@ Public Sub ImportClashTests()
     Application.ScreenUpdating = False
     Set wsT = EnsureSheet(SHEET_TESTS)
     wsT.Cells.Clear
-    wsT.Range("A1:F1").Value = Array("Test Name", "Tol (mm)", "Clr (mm)", "Priority", "Set A", "Set B")
+    wsT.Range("A1:E1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp")
+    wsT.Cells(1, COL_SETA).Value = "Set A"
+    wsT.Cells(1, COL_SETB).Value = "Set B"
     wsT.Range("A2").Resize(nTests, N_COLS).Value = outData
-    wsT.Columns("A:D").AutoFit
-    wsT.Columns("E:F").Hidden = True
+    FormatTestsSheet wsT
     Application.ScreenUpdating = su
 
     Dim msg As String
     msg = nTests & " test(s) imported into '" & SHEET_TESTS & "'." & vbCrLf & vbCrLf & _
-          "Edit Tol / Clr / Priority, then run ExportClashTests to write a new .vimctst." & vbCrLf & vbCrLf & _
+          "Edit Tolerance / Clearance / Priority / Stamp, then run ExportClashTests to write a new .vimctst." & vbCrLf & vbCrLf & _
           "NOTE: re-importing adds NEW tests (fresh GUIDs) - delete the originals in Revizto first, " & _
           "or you'll get duplicates."
     If dirCount > 0 Then msg = msg & vbCrLf & vbCrLf & dirCount & " test(s) used DIRECTIONAL clearance - " & _
@@ -485,6 +499,17 @@ Private Function DecodePriority(ByRef b() As Byte, ByVal f6 As Variant) As Strin
     End Select
 End Function
 
+' stamp code = f6.f10.f4 (string); "" if the test has no stamp
+Private Function DecodeStamp(ByRef b() As Byte, ByVal f6 As Variant) As String
+    Dim rf As Collection: Set rf = ParseFields(b, f6(2), f6(3))
+    Dim f10 As Variant: f10 = Fld(rf, 10)
+    If IsEmpty(f10) Then Exit Function
+    Dim f10f As Collection: Set f10f = ParseFields(b, f10(2), f10(3))
+    Dim cv As Variant: cv = Fld(f10f, 4)
+    If IsEmpty(cv) Then Exit Function
+    If cv(1) = 2 Then DecodeStamp = BytesToStr(b, cv(2), cv(3))
+End Function
+
 ' round to 2 dp, half-up (clash distances are clean numbers; float32 introduces tiny noise)
 Private Function RoundMm(ByVal mm As Double) As Double
     RoundMm = Int(mm * 100# + 0.5) / 100#
@@ -527,12 +552,10 @@ End Function
 
 
 ' ===================== per-test settings =====================
-' Apply one row's Tol/Clr/Prio onto a cloned field6 tail (all fixed-length overwrites).
-' Grouping is NOT touched here - it's baked into the template once before the loop.
-Private Sub ApplySettings(ByRef tail() As Byte, ByVal sTol As String, ByVal sClr As String, ByVal sPrio As String, _
-                          ByVal clrA As Long, ByVal clrB As Long, ByVal clrC As Long, ByVal modeOff As Long, _
-                          ByVal prioFlagOff As Long, ByVal prioValOff As Long, _
-                          ByRef badPrioCount As Long)
+' Apply one row's Tol/Clr onto a cloned field6 tail (fixed-length overwrite of f4.f3 + f4.f4).
+' Grouping is baked into the template before the loop; priority + stamp are done by RebuildF10.
+Private Sub ApplyProximity(ByRef tail() As Byte, ByVal sTol As String, ByVal sClr As String, _
+                           ByVal clrA As Long, ByVal clrB As Long, ByVal clrC As Long, ByVal modeOff As Long)
     Dim tolMm As Double, clrMm As Double
     Dim hasTol As Boolean, hasClr As Boolean
     hasTol = ParseMm(sTol, tolMm)
@@ -552,14 +575,51 @@ Private Sub ApplySettings(ByRef tail() As Byte, ByVal sTol As String, ByVal sClr
     PokeSingle tail, clrB, fv
     PokeSingle tail, clrC, fv
     tail(modeOff) = mode
-
-    ' priority (Trivial1/Minor2/Major3/Critical4/Blocker5; blank/none => 0)
-    Dim known As Boolean, pVal As Long
-    pVal = PriorityValue(sPrio, known)
-    If Not known Then badPrioCount = badPrioCount + 1
-    If pVal > 0 Then tail(prioFlagOff) = 4 Else tail(prioFlagOff) = 0
-    tail(prioValOff) = CByte(pVal)
 End Sub
+
+' Rebuild field6.f10 (priority + stamp) and splice it into the tail. Unlike the fixed-length
+' pokes, a stamp INSERTS f4 (code) + f11 (GUID), so f10 - and the tail - grow; the new tail
+' length comes back in outLen. f10 sub-fields: f1 flag (stamp=1|priority=4), f2=0, f3=1,
+' [f4=code], f6=priority, [f11=fabricated GUID, cosmetic - stamps bind by the code string].
+Private Function RebuildF10(ByRef tail() As Byte, ByVal tailLen As Long, ByVal priorityVal As Long, _
+                            ByVal stampCode As String, ByRef outLen As Long) As Byte()
+    Dim tc As Collection: Set tc = ParseFields(tail, 0, tailLen)
+    Dim f10 As Variant: f10 = Fld(tc, 10)
+    Dim payStart As Long: payStart = f10(2)
+    Dim payLen As Long: payLen = f10(3)
+    Dim recStart As Long: recStart = payStart - 1 - VLen(payLen)   ' back over the len varint + 0x52 tag
+    Dim recEnd As Long: recEnd = payStart + payLen
+
+    Dim hasStamp As Boolean: hasStamp = (Len(stampCode) > 0)
+    Dim f1v As Long: f1v = 0
+    If hasStamp Then f1v = f1v Or 1
+    If priorityVal > 0 Then f1v = f1v Or 4
+
+    Dim pay() As Byte, pl As Long: ReDim pay(0 To 255): pl = 0
+    PutB pay, pl, &H8: PutB pay, pl, CByte(f1v)              ' f1 = flag bits
+    PutB pay, pl, &H10: PutB pay, pl, 0                      ' f2 = 0
+    PutB pay, pl, &H18: PutB pay, pl, 1                      ' f3 = 1
+    If hasStamp Then
+        Dim cb() As Byte: cb = AsciiBytes(stampCode)
+        PutB pay, pl, &H22: PutVarint pay, pl, (UBound(cb) + 1): PutArr pay, pl, cb   ' f4 = code
+    End If
+    PutB pay, pl, &H30: PutVarint pay, pl, priorityVal      ' f6 = priority
+    If hasStamp Then
+        PutB pay, pl, &H5A: PutB pay, pl, &H10: PutArr pay, pl, NewGuidBytes()        ' f11 = GUID
+    End If
+
+    ' out = tail[0..recStart) + (0x52 + len(pl) + payload) + tail[recEnd..tailLen)
+    Dim total As Long: total = recStart + (1 + VLen(pl) + pl) + (tailLen - recEnd)
+    Dim out() As Byte: ReDim out(0 To total - 1)
+    Dim ol As Long, i As Long: ol = 0
+    For i = 0 To recStart - 1: out(ol) = tail(i): ol = ol + 1: Next i
+    PutB out, ol, &H52: PutVarint out, ol, pl
+    For i = 0 To pl - 1: out(ol) = pay(i): ol = ol + 1: Next i
+    For i = recEnd To tailLen - 1: out(ol) = tail(i): ol = ol + 1: Next i
+
+    outLen = total
+    RebuildF10 = out
+End Function
 
 ' "25" / "25 mm" / 25 -> True + mm; blank/non-numeric -> False
 Private Function ParseMm(ByVal s As String, ByRef mm As Double) As Boolean
@@ -587,11 +647,10 @@ End Function
 
 ' Find the writable setting slots inside the field6 tail by parsing it (survives re-harvest):
 '   clrA/B/C = the 3 proximity floats f4.f3.f1/f2/f3   modeOff = f4.f4 mode varint
-'   grpOff   = grouping float f9.f1.f3.f1
-'   prioFlagOff = f10.f1 (priority-set flag)   prioValOff = f10.f6 (priority value)
+'   grpOff   = grouping float f9.f1.f3.f1   (priority + stamp live in f10, rebuilt by RebuildF10)
 Private Sub LocateSettings(ByRef tail6() As Byte, ByVal tail6Len As Long, _
                            ByRef clrA As Long, ByRef clrB As Long, ByRef clrC As Long, ByRef modeOff As Long, _
-                           ByRef grpOff As Long, ByRef prioFlagOff As Long, ByRef prioValOff As Long)
+                           ByRef grpOff As Long)
     Dim tc As Collection, f4f As Collection, f3f As Collection
     Dim f4rec As Variant, f3rec As Variant
     Set tc = ParseFields(tail6, 0, tail6Len)
@@ -616,13 +675,6 @@ Private Sub LocateSettings(ByRef tail6() As Byte, ByVal tail6Len As Long, _
     g3rec = Fld(f91f, 3)
     Set g3f = ParseFields(tail6, g3rec(2), g3rec(3))
     grpOff = Fld(g3f, 1)(2)
-
-    ' priority (f10.f1 flag + f10.f6 value)
-    Dim f10rec As Variant, f10f As Collection
-    f10rec = Fld(tc, 10)
-    Set f10f = ParseFields(tail6, f10rec(2), f10rec(3))
-    prioFlagOff = Fld(f10f, 1)(2)
-    prioValOff = Fld(f10f, 6)(2)
 End Sub
 
 
@@ -632,18 +684,33 @@ Private Sub SnapshotSettings(ByVal ws As Worksheet, ByVal dict As Object)
     Dim last As Long
     last = ws.Cells(ws.Rows.Count, "A").End(xlUp).Row
     If last < 2 Then Exit Sub
-    Dim a As Variant: a = ws.Range("A2:D" & last).Value
+    Dim a As Variant: a = ws.Range("A2:E" & last).Value
     Dim r As Long, key As String
     For r = 1 To UBound(a, 1)
         key = Trim$(CStr(a(r, 1)))
         If Len(key) > 0 And Not dict.Exists(key) Then
-            dict(key) = Array(CStr(a(r, COL_TOL)), CStr(a(r, COL_CLR)), CStr(a(r, COL_PRIO)))
+            dict(key) = Array(CStr(a(r, COL_TOL)), CStr(a(r, COL_CLR)), CStr(a(r, COL_PRIO)), CStr(a(r, COL_STAMP)))
         End If
     Next r
 End Sub
 
 
 ' ===================== byte / protobuf / guid helpers =====================
+' Lay out the Tests sheet: autofit the visible columns, give Priority a fixed comfortable width,
+' centre Tolerance/Clearance, and hide the far-right Set A/Set B helper columns.
+Private Sub FormatTestsSheet(ByVal wsT As Worksheet)
+    wsT.Columns("A").AutoFit                                  ' Test Name fits its content
+    wsT.Columns("B:E").ColumnWidth = 16                       ' the four setting columns: equal + wider
+    wsT.Columns("B:E").HorizontalAlignment = xlCenter         ' Tolerance/Clearance/Priority/Stamp centred
+    With wsT.Range("A1:E1")                                   ' header row: dark-grey box, white bold text
+        .HorizontalAlignment = xlCenter
+        .Font.Bold = True
+        .Font.Color = RGB(255, 255, 255)
+        .Interior.Color = RGB(64, 64, 64)
+    End With
+    wsT.Range(wsT.Cells(1, COL_SETA), wsT.Cells(1, COL_SETB)).EntireColumn.Hidden = True
+End Sub
+
 Private Function EnsureSheet(ByVal nm As String) As Worksheet
     Dim ws As Worksheet
     On Error Resume Next
