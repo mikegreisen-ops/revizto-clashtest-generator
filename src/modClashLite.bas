@@ -9,7 +9,8 @@
 '                   C  Clearance (mm)   clearance distance   (default blank)
 '                   D  Priority         Trivial/Minor/Major/Critical/Blocker (default Minor)
 '                   E  Stamp            Revizto stamp code, e.g. "0AR" - CASE-SENSITIVE (blank = none)
-'                   (B-E equal width + centred; header row styled - see FormatTestsSheet)
+'                   F  Type             "Self" / "Cross" - filter to bulk-remove self-pairs; ignored on export
+'                   (B-F centred, header row styled, set columns hidden far right - see LayOutTestsSheet)
 '                   Y  Set A  ) hidden helper columns parked far right - the two search sets this
 '                   Z  Set B  ) row clashes. Generate reads these; don't normally touch them.
 '                Grouping is fixed at 15000mm on every test (Revizto manages it globally).
@@ -24,6 +25,8 @@
 '                              the matrix, so deleting rows / editing settings just works.
 '  So: run BuildTestList, adjust Tol/Clr/Priority (or delete rows you don't want), then
 '  run ExportClashTests.
+'  ALREADY HAVE A LIST? The Tests sheet exists from the start - just paste your rows under the
+'  headers (or run NewTestsSheet for a fresh blank one), then ExportClashTests. No BuildTestList needed.
 '
 '  Revizto re-matches each side to a project search set BY NAME on import, so the names
 '  must match your real Revizto set names. GUIDs are fabricated.
@@ -63,9 +66,10 @@ Private Const COL_TOL   As Long = 2             ' B: tolerance (mm)
 Private Const COL_CLR   As Long = 3             ' C: clearance (mm)
 Private Const COL_PRIO  As Long = 4             ' D: priority (text)
 Private Const COL_STAMP As Long = 5             ' E: stamp code (text, e.g. "0AR"; blank = none)
+Private Const COL_TYPE  As Long = 6             ' F: "Self" / "Cross" - for filtering self-pairs; ignored on export
 ' Set A / Set B are hidden helper columns parked FAR to the right (Y/Z) so they're well clear of
 ' the editable columns - resizing Priority etc. can't accidentally catch them. Cols F..X stay blank.
-' Keep these indices in sync with the "Y"/"Z" column letters used in FormatTestsSheet.
+' Keep these indices in sync with the "Y"/"Z" column letters used in LayOutTestsSheet.
 Private Const COL_SETA  As Long = 25            ' Y: set A name (hidden helper)
 Private Const COL_SETB  As Long = 26            ' Z: set B name (hidden helper)
 Private Const N_COLS    As Long = 26
@@ -156,6 +160,7 @@ Public Sub BuildTestList()
             outData(oi, COL_CLR) = sClr
             outData(oi, COL_PRIO) = sPrio
             outData(oi, COL_STAMP) = sStamp
+            outData(oi, COL_TYPE) = IIf(i = j, "Self", "Cross")
             outData(oi, COL_SETA) = nameA
             outData(oi, COL_SETB) = nameB
         Next j
@@ -166,16 +171,41 @@ Public Sub BuildTestList()
     Application.ScreenUpdating = False
     Set wsT = EnsureSheet(SHEET_TESTS)
     wsT.Cells.Clear
-    wsT.Range("A1:E1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp")
-    wsT.Cells(1, COL_SETA).Value = "Set A"
-    wsT.Cells(1, COL_SETB).Value = "Set B"
     If total > 0 Then wsT.Range("A2").Resize(total, N_COLS).Value = outData
-    FormatTestsSheet wsT
+    LayOutTestsSheet wsT
     Application.ScreenUpdating = su
 
     MsgBox "Built " & total & " tests from " & n & " sets in " & Format(Timer - t0, "0.0") & "s." & vbCrLf & vbCrLf & _
            "Adjust Tolerance / Clearance / Priority / Stamp on the '" & SHEET_TESTS & "' sheet (or delete rows you " & _
            "don't want), then run ExportClashTests.", vbInformation
+End Sub
+
+
+' ===================== START A BLANK TESTS SHEET (paste your own list) =====================
+' For when you already have a test list/matrix to paste in: makes an empty, formatted Tests sheet.
+' Paste your rows under the headers (Test Name as "SetA vs SetB", plus Tolerance/Clearance/Priority/
+' Stamp), then run ExportClashTests. (BuildTestList builds the pairings for you instead.)
+Public Sub NewTestsSheet()
+    Dim wsT As Worksheet
+    On Error Resume Next
+    Set wsT = ThisWorkbook.Worksheets(SHEET_TESTS)
+    On Error GoTo 0
+    If Not wsT Is Nothing Then
+        If wsT.Cells(wsT.Rows.Count, "A").End(xlUp).Row >= 2 Then
+            If MsgBox("The '" & SHEET_TESTS & "' sheet already has rows - clear it and start blank?", _
+                      vbExclamation Or vbOKCancel, "Reset Tests sheet?") <> vbOK Then Exit Sub
+        End If
+    End If
+    Dim su As Boolean: su = Application.ScreenUpdating
+    Application.ScreenUpdating = False
+    Set wsT = EnsureSheet(SHEET_TESTS)
+    wsT.Cells.Clear
+    LayOutTestsSheet wsT
+    Application.ScreenUpdating = su
+    wsT.Activate
+    MsgBox "Blank '" & SHEET_TESTS & "' sheet ready." & vbCrLf & vbCrLf & _
+           "Paste your tests under the headers - Test Name as ""SetA vs SetB"", plus Tolerance / " & _
+           "Clearance / Priority / Stamp - then run ExportClashTests.", vbInformation
 End Sub
 
 
@@ -325,8 +355,20 @@ Public Sub ExportClashTests()
         Exit Sub
     End If
 
+    Dim genSecs As Single: genSecs = Timer - t0
+
+    ' ---- ask where to save (default name + the workbook's folder); never silently overwrite ----
+    Dim defPath As String: defPath = ThisWorkbook.Path
+    If InStr(1, defPath, "://") > 0 Then defPath = ""          ' OneDrive/SharePoint URL - let the dialog choose the folder
+    If Len(defPath) > 0 Then defPath = defPath & Application.PathSeparator
+    defPath = defPath & OUTPUT_FILE
+    Dim chosen As Variant
+    chosen = Application.GetSaveAsFilename(InitialFileName:=defPath, _
+                 FileFilter:="Revizto clash tests (*.vimctst), *.vimctst", Title:="Save clash tests as")
+    If VarType(chosen) = vbBoolean Then Exit Sub               ' user cancelled the Save dialog
+    Dim outPath As String: outPath = CStr(chosen)
+
     ' ---- write header + b4 + b5 + b6 ----
-    Dim outPath As String: outPath = ThisWorkbook.Path & Application.PathSeparator & OUTPUT_FILE
     Dim f As Integer: f = FreeFile
     If Dir(outPath) <> "" Then Kill outPath
     Open outPath For Binary Access Write As #f
@@ -337,7 +379,7 @@ Public Sub ExportClashTests()
     Close #f
 
     Dim msg As String
-    msg = gen & " clash tests written in " & Format(Timer - t0, "0.0") & "s" & vbCrLf & OUTPUT_FILE
+    msg = gen & " clash tests written in " & Format(genSecs, "0.0") & "s" & vbCrLf & outPath
     If skipped > 0 Then msg = msg & vbCrLf & vbCrLf & skipped & " row(s) skipped (no Set A / Set B - rebuild with BuildTestList)."
     If badPrioCount > 0 Then msg = msg & vbCrLf & badPrioCount & " row(s) had an unrecognised Priority - treated as none (use Trivial/Minor/Major/Critical/Blocker)."
     MsgBox msg, vbInformation
@@ -405,6 +447,7 @@ Public Sub ImportClashTests()
         outData(i, COL_CLR) = clrS
         outData(i, COL_PRIO) = DecodePriority(b, f6recs(i))
         outData(i, COL_STAMP) = DecodeStamp(b, f6recs(i))
+        outData(i, COL_TYPE) = IIf(setA = setB, "Self", "Cross")
         outData(i, COL_SETA) = setA
         outData(i, COL_SETB) = setB
     Next i
@@ -414,11 +457,8 @@ Public Sub ImportClashTests()
     Application.ScreenUpdating = False
     Set wsT = EnsureSheet(SHEET_TESTS)
     wsT.Cells.Clear
-    wsT.Range("A1:E1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp")
-    wsT.Cells(1, COL_SETA).Value = "Set A"
-    wsT.Cells(1, COL_SETB).Value = "Set B"
     wsT.Range("A2").Resize(nTests, N_COLS).Value = outData
-    FormatTestsSheet wsT
+    LayOutTestsSheet wsT
     Application.ScreenUpdating = su
 
     Dim msg As String
@@ -696,13 +736,17 @@ End Sub
 
 
 ' ===================== byte / protobuf / guid helpers =====================
-' Lay out the Tests sheet: autofit the visible columns, give Priority a fixed comfortable width,
-' centre Tolerance/Clearance, and hide the far-right Set A/Set B helper columns.
-Private Sub FormatTestsSheet(ByVal wsT As Worksheet)
+' Write the Tests-sheet headers and apply all formatting (BuildTestList, ImportClashTests and
+' NewTestsSheet all share this). Set A/Set B live hidden far right; everything visible is A:F.
+Private Sub LayOutTestsSheet(ByVal wsT As Worksheet)
+    wsT.Range("A1:F1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp", "Type")
+    wsT.Cells(1, COL_SETA).Value = "Set A"
+    wsT.Cells(1, COL_SETB).Value = "Set B"
     wsT.Columns("A").AutoFit                                  ' Test Name fits its content
     wsT.Columns("B:E").ColumnWidth = 16                       ' the four setting columns: equal + wider
-    wsT.Columns("B:E").HorizontalAlignment = xlCenter         ' Tolerance/Clearance/Priority/Stamp centred
-    With wsT.Range("A1:E1")                                   ' header row: dark-grey box, white bold text
+    wsT.Columns("B:F").HorizontalAlignment = xlCenter         ' settings + Type centred
+    wsT.Columns("F").AutoFit                                  ' Type fits "Cross"/"Self"
+    With wsT.Range("A1:F1")                                   ' header row: dark-grey box, white bold text
         .HorizontalAlignment = xlCenter
         .Font.Bold = True
         .Font.Color = RGB(255, 255, 255)

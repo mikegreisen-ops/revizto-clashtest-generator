@@ -32,6 +32,10 @@ Just one file:
 > Skipping the Unblock step is the #1 "it doesn't work": Excel shows a red *"macros have been blocked"*
 > banner and the buttons won't run. It's not broken — just blocked. Unblock, reopen, enable macros.
 
+**Once open, the workbook lands on an `Instructions` sheet with a button for every step** — you can click
+those instead of using `Alt+F8`. (Below, each button is named in plain English with the underlying macro
+in `code`.)
+
 ### 2. Add your search-set names
 
 The workbook opens on a sheet called **`Sets`**. Put your Revizto search-set names in **column A** (one
@@ -43,29 +47,40 @@ per row, from row 2). Two ways:
   [`templates/Testing searchsets.vimsst`](templates/Testing%20searchsets.vimsst).)*
 - **Or type / paste** the names in yourself — but they must match your Revizto set names **exactly**.
 
+> **Don't have the search sets in Revizto yet?** They need to exist there for the clash tests to bind.
+> Revizto's **Bulk Create Search Sets** is the quick way to make them first.
+
 ### 3. Build → adjust → export
 
-1. Run **`BuildTestList`** (`Alt+F8` → pick it → Run). It fills a **`Tests`** sheet with every pairing
-   of your sets, each with sensible default settings.
-2. **Adjust** the Tolerance / Clearance / Priority / Stamp columns to suit (or delete any rows you don't
-   want). You can drive these straight from your own coordination matrix.
-3. Run **`ExportClashTests`**. It writes **`Clash Tests.vimctst`** next to the workbook.
+1. Click **Build Test List**. It fills a **`Tests`** sheet with every pairing of your sets, each with
+   sensible default settings.
+2. **Adjust** the Tolerance / Clearance / Priority / Stamp columns to suit (or delete rows — use the
+   **Type** column to filter out the self-pairs). You can drive these straight from your own matrix.
+3. Click **Export Clash Tests** and choose where to save the **`.vimctst`**.
 4. **Import** that file into Revizto (Clash Detection ▸ import). Done — all your tests, named and
    configured.
 
 > "Every pairing" means every set against every other set, **plus each set against itself** — so 10
 > sets makes 55 tests. (You can delete the self-pairs or any others you don't need before exporting.)
 
+> **Already have a test list or matrix?** The `Tests` sheet is there from the moment you open the
+> workbook — just **paste your rows under the headers** (Test Name as `"Set A vs Set B"`, plus
+> Tolerance / Clearance / Priority / Stamp) and skip straight to `ExportClashTests`. No need to run
+> `BuildTestList` at all. Want a clean blank sheet to paste into? Run **`NewTestsSheet`**.
+
 ---
 
-## The three buttons
+## The buttons
 
-| Macro (`Alt+F8`) | What it does |
+On the `Instructions` sheet (or via `Alt+F8` by the macro name):
+
+| Button — macro | What it does |
 |---|---|
-| **`BuildTestList`** | `Sets` list → `Tests` sheet (every pairing, with editable settings) |
-| **`ExportClashTests`** | `Tests` sheet → `Clash Tests.vimctst` (the file you import into Revizto) |
-| **`ImportClashTests`** | an existing `.vimctst` → `Tests` sheet (to edit tests you already have) |
-| **`ImportSetsFromVimsst`** | a `.vimsst` → fills the `Sets` list with your set names |
+| **Build Test List** — `BuildTestList` | `Sets` list → `Tests` sheet (every pairing, with editable settings) |
+| **Export Clash Tests** — `ExportClashTests` | `Tests` sheet → a `.vimctst` (the file you import into Revizto) |
+| **Import Clash Tests** — `ImportClashTests` | an existing `.vimctst` → `Tests` sheet (to edit tests you already have) |
+| **Import Set Names** — `ImportSetsFromVimsst` | a `.vimsst` → fills the `Sets` list with your set names |
+| **New Blank Tests Sheet** — `NewTestsSheet` | a blank, formatted `Tests` sheet to paste your own list into |
 
 ## The `Tests` sheet
 
@@ -78,6 +93,7 @@ per row, from row 2). Two ways:
 | **Clearance (mm)** | a required gap — clashes when things are *closer* than this | *(blank)* |
 | **Priority** | `Trivial` / `Minor` / `Major` / `Critical` / `Blocker` | `Minor` |
 | **Stamp** | a Revizto stamp code, e.g. `0AR` (blank = no stamp) | *(blank)* |
+| **Type** | `Self` or `Cross` — auto-filled; **filter on it to bulk-remove self-pairs** (ignored on export) | auto |
 
 (Two more columns, **Set A** and **Set B**, are hidden far to the right — the tool needs them, you
 don't.)
@@ -141,13 +157,16 @@ src/modImportSets.bas                 ImportSetsFromVimsst (set names from a .vi
 docs/vimctst-format.md                reverse-engineered .vimctst format notes
 templates/Example.xlsm                ready-to-use starter workbook (modules pasted in)
 templates/Testing searchsets.vimsst   example .vimsst to try the set-name import with
-tools/sync-xlsm.ps1                    re-injects src/*.bas into Example.xlsm (keeps them in sync)
+tools/sync-xlsm.ps1                    re-injects src/*.bas into Example.xlsm (keeps modules in sync)
+tools/setup-starter.ps1                rebuilds the whole starter (modules + sheets + buttons)
 ```
 
-**Keeping `Example.xlsm` in sync:** the `.bas` files are the source of truth. After editing one, run
-[`tools/sync-xlsm.ps1`](tools/sync-xlsm.ps1) to re-import the modules into the starter (needs Excel and a
-one-time *Trust access to the VBA project object model* setting; the workbook must be closed). Target
-another workbook with `-Workbook <path>`.
+**Rebuilding the starter:** the `.bas` files are the source of truth. After editing one, run
+[`tools/sync-xlsm.ps1`](tools/sync-xlsm.ps1) to re-import just the modules. To rebuild the entire
+`Example.xlsm` from scratch — modules plus the Instructions / Sets / Tests sheets and the buttons — run
+[`tools/setup-starter.ps1`](tools/setup-starter.ps1). Both need Excel and the one-time *Trust access to
+the VBA project object model* setting, with the workbook closed. (Close stray Excel instances first —
+a lingering one can clobber the save.)
 
 ## Status
 
