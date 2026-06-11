@@ -1,11 +1,13 @@
 # Revizto Clash-Test Generator
 
-Turn a **list of search-set names** into a full matrix of Revizto **clash tests** (`.vimctst`) —
-one button, instead of creating and naming hundreds of tests by hand.
+Turn a **list of search-set names** into a full matrix of Revizto **clash tests** (`.vimctst`), with
+per-test tolerance / clearance / priority — instead of creating, naming and configuring hundreds of
+tests by hand. It also reads an existing `.vimctst` **back** into Excel, so you can bulk-edit settings
+and re-export.
 
-A coordination project needs a clash test for every pair of disciplines/elements. Setting those up
-in Revizto is slow and repetitive. This tool takes your list of search sets, builds every pairing,
-and writes a `.vimctst` you import straight into Revizto.
+A coordination project needs a clash test for every pair of disciplines/elements. Setting those up in
+Revizto is slow and repetitive. This tool builds every pairing into an editable `Tests` sheet, lets
+you drive the settings from your own matrix, and writes a `.vimctst` you import straight into Revizto.
 
 > ⚠️ **Unofficial.** The `.vimctst` format is **reverse-engineered**, not documented or supported by
 > Revizto, and this project is **not affiliated with or endorsed by Revizto**. The format can change
@@ -16,92 +18,117 @@ and writes a `.vimctst` you import straight into Revizto.
 ## What it does
 
 ```
-Sets sheet (your list of set names)
-        │  GenerateClashTests
-        ▼
-Tests sheet (every pairing, 1v1 / 2v1 / 2v2 / …)  +  Clash Tests.vimctst
-        ▼
-import into Revizto
+ Sets sheet                 Tests sheet                       Clash Tests.vimctst
+ (set names)  ──BuildTestList──▶  (one row per pair,    ──ExportClashTests──▶  (import into Revizto)
+                                   editable Tol/Clr/Prio)
+                                        ▲
+ a .vimctst  ──ImportClashTests────────┘   (read existing tests back in to edit)
 ```
 
-- **In:** one column of search-set names (the `Sets` sheet).
-- **Out:** a `.vimctst` containing one clash test for **every lower-triangular pair, including
-  self-pairs** (so `N` sets → `N·(N+1)/2` tests), plus a `Tests` sheet showing the matrix.
-- **No codes, priorities, or clearances** — just names in, tests out. Set those up in Revizto after.
+Three macros, one editable `Tests` sheet in the middle:
+
+| Macro | Direction |
+|---|---|
+| **`BuildTestList`** | `Sets` → `Tests` sheet — every lower-triangular pair **including self-pairs** (`N` sets → `N·(N+1)/2` tests) |
+| **`ImportClashTests`** | `.vimctst` → `Tests` sheet — decode an existing export to edit it |
+| **`ExportClashTests`** | `Tests` sheet → `Clash Tests.vimctst` — write the file to import into Revizto |
+
+So you can work **from scratch** (BuildTestList → adjust → ExportClashTests) or **round-trip** an
+existing set (ImportClashTests → adjust → ExportClashTests).
 
 ## Why it works
 
 On import, **Revizto re-matches each test's two sides to your project's search sets by the set
 *name*** — the stored GUID and folder path are cosmetic. So the tool only needs your set *names*; it
 fabricates the GUIDs. A name that doesn't match a set imports with a warning and a "re-select from
-list" prompt — so typos are obvious and harmless, never destructive.
+list" prompt — so typos are obvious and harmless, never destructive. (Priority and stamp bind the same
+way — by value/code, not GUID.)
+
+## The `Tests` sheet
+
+`BuildTestList` and `ImportClashTests` both write the same sheet; `ExportClashTests` reads it.
+
+| Col | Header | Meaning | Default |
+|---|---|---|---|
+| A | **Test Name** | `"<Set A> vs <Set B>"` — rename freely, it becomes the test's name | — |
+| B | **Tol (mm)** | tolerance distance (mm) | `25` |
+| C | **Clr (mm)** | clearance distance (mm) | *(blank)* |
+| D | **Priority** | `Trivial` / `Minor` / `Major` / `Critical` / `Blocker` | `Minor` |
+| E, F | **Set A / Set B** | the two search sets this row clashes — *hidden helper columns*, read by export | — |
+
+- **Tolerance and clearance are opposite functions** — a test is one or the other, never both. If any
+  row has **both** Tol and Clr filled, `ExportClashTests` **stops and lists those rows**; nothing is
+  written until you clear one of the two on each.
+- **Blank Tol and Clr** → no proximity check. **Blank / `None` priority** → no priority.
+- **Grouping** is fixed at **15000 mm** on every test (Revizto manages grouping globally), so it has no
+  column.
+- Distances are stored in the file in **feet**; the macro converts mm for you.
+- Re-running `BuildTestList` **preserves** any Tol/Clr/Priority you've edited (matched by Test Name)
+  and refreshes the pair list from `Sets`. Delete rows you don't want before exporting.
 
 ## Use it
 
-1. **Set up the workbook** (once): a sheet named **`Sets`** with a header in `A1` and your search-set
-   names in `A2` downward. Then `Alt+F11` ▸ `Insert ▸ Module`, paste
-   [`src/modClashLite.bas`](src/modClashLite.bas). To pull names straight from Revizto instead of
-   typing them, also paste [`src/modImportSets.bas`](src/modImportSets.bas) (see below).
-2. **Run** `GenerateClashTests` (`Alt+F8`, or F5 from the editor).
-3. It writes the **`Tests`** sheet (preview of every pair) and saves **`Clash Tests.vimctst`** next to
-   the workbook.
+The ready-made starter [`templates/Example.xlsm`](templates/Example.xlsm) already has both modules
+pasted in. Or set up your own workbook once: a sheet named **`Sets`** with a header in `A1` and your
+search-set names in `A2` downward, then `Alt+F11` ▸ `Insert ▸ Module` and paste
+[`src/modClashLite.bas`](src/modClashLite.bas) (and [`src/modImportSets.bas`](src/modImportSets.bas)
+for the `.vimsst` name import).
+
+1. **`BuildTestList`** (`Alt+F8`) — fills the `Tests` sheet with every pair + default Tol/Clr/Priority.
+2. **Adjust** Tol / Clr / Priority on the `Tests` sheet (drive them from your own matrix), and delete
+   any rows you don't want.
+3. **`ExportClashTests`** — writes **`Clash Tests.vimctst`** next to the workbook.
 4. **Import** the `.vimctst` into Revizto. The set names must match your real Revizto sets.
 
-### Don't want to type the names? Import them from Revizto
+To edit an **existing** Revizto export instead, run **`ImportClashTests`**, pick the `.vimctst`, edit,
+then `ExportClashTests`.
 
-Paste [`src/modImportSets.bas`](src/modImportSets.bas) into a second module and run
-`ImportSetsFromVimsst`. It shows a file picker — point it at a **`.vimsst`** search-set export from
-Revizto, and it fills the **`Sets`** sheet for you:
+> ⚠️ **Re-importing edits *duplicates*, it doesn't replace.** Every generated test carries a freshly
+> minted GUID, and Revizto identifies tests by GUID — so importing an edited set back into the same
+> project adds new tests alongside the originals. **Before re-importing, delete the original tests in
+> Revizto** (or import into a clean Clash Detection folder).
 
-- **column A** — the set name (exactly as stored; this is what the generator uses),
-- **column B** — the Revizto folder each set lived under (reference only — the generator ignores it;
-  handy for spotting and deleting sets you don't want).
+### Pulling set names from Revizto
 
-Existing names in column A are replaced (you're asked to confirm first). Then carry on at step 2.
-Because names must match your real Revizto sets exactly, importing them is also the safest way to
-avoid typos.
-
-To try it without your own export, point the picker at the bundled example
+Run `ImportSetsFromVimsst` (in `modImportSets`). It shows a file picker — point it at a **`.vimsst`**
+search-set export, and it fills the **`Sets`** sheet (column A) with the set names exactly as stored,
+so they match on import. Existing names are replaced (you're asked to confirm first). To try it without
+your own export, point the picker at the bundled
 [`templates/Testing searchsets.vimsst`](templates/Testing%20searchsets.vimsst).
 
 > **OneDrive gotcha:** the macro saves next to the workbook via `ThisWorkbook.Path`. For a workbook in
-> OneDrive/SharePoint that path can be an `https://…` URL that file I/O can't use (run-time error 52).
-> Run from a **local, non-synced folder** (e.g. `C:\Temp\`) and copy the result back.
-
-### Clash settings (tolerance & grouping)
-
-Every generated test carries the **same** clearance, tolerance and grouping — the settings from a
-**single example test**, copied onto every test (baked into the macro as the `HEX_TAIL6` constant).
-They are **not** per-test, project-specific, or drawn from any considered template — just one test's
-settings replicated. They are also **non-standard**. Treat them as placeholders: review and set them
-deliberately before relying on the results. Two ways to change them:
-
-- **After import**, select all the tests in Revizto and bulk-edit tolerance/grouping there (the
-  intended workflow — set them uniformly once).
-- **At the source**, re-harvest `HEX_TAIL6` from a test configured with your own defaults.
-
-Driving these from a couple of extra columns in the `Sets` sheet would be a small change — open an
-issue if that'd be useful.
+> OneDrive/SharePoint that path can be an `https://…` URL that file I/O can't use (run-time error 52),
+> and Revizto's own exports to a synced folder can land as 0-byte files. Run from a **local, non-synced
+> folder** (e.g. `C:\Temp\`) and copy the result back.
 
 ## Repository layout
 
 ```
-src/modClashLite.bas              the generator — paste into the workbook
-src/modImportSets.bas             optional: import set names from a Revizto .vimsst export
-docs/vimctst-format.md            reverse-engineered .vimctst format notes
-templates/Example.xlsm            ready-to-use starter workbook (both macros pasted in)
-templates/Testing searchsets.vimsst  example .vimsst export to try the import with
+src/modClashLite.bas                  BuildTestList / ImportClashTests / ExportClashTests
+src/modImportSets.bas                 optional: import set names from a Revizto .vimsst export
+docs/vimctst-format.md                reverse-engineered .vimctst format notes
+templates/Example.xlsm                ready-to-use starter workbook (both modules pasted in)
+templates/Testing searchsets.vimsst   example .vimsst export to try the name import with
+tools/sync-xlsm.ps1                    maintainer tool: re-inject the src/*.bas into Example.xlsm
 ```
+
+### For maintainers — keeping `Example.xlsm` in sync
+
+The `.bas` files are the single source of truth; `Example.xlsm` holds its own embedded copy of each
+module. After editing a `.bas`, run [`tools/sync-xlsm.ps1`](tools/sync-xlsm.ps1) to re-import the
+modules into the starter (needs Excel + a one-time *Trust access to the VBA project object model*
+setting; the workbook must be closed). Point it at another workbook with `-Workbook <path>`.
 
 ## Status
 
-Working and approved for sharing. The generator and the `.vimsst` name-import both work, and a clean
-starter workbook (`templates/Example.xlsm`) with example-only data ships with the repo. **Revizto**
-(format) and **Architectus** (employer/IP) have both signed off on publishing.
+Working. Generate, import/round-trip and the `.vimsst` name-import all work; per-test tolerance,
+clearance and priority are decoded and written from the `Tests` sheet. A clean starter workbook with
+example-only data ships with the repo. **Revizto** (format) and **Architectus** (employer/IP) have both
+signed off on publishing.
 
-Possible next step: generating the search sets themselves (not just the tests). Proven in PowerShell,
-but the set settings are involved enough that a VBA port hasn't been worth it yet — open an issue if
-you'd find it useful.
+Decoded but not surfaced in this lite tool: **grouping** (fixed at 15000 mm here), **stamps**, and
+**directional clearance** (separate vertical/horizontal distances in one test). Open an issue if you'd
+find any of them useful.
 
 ## License
 

@@ -4,15 +4,13 @@
 '
 '  Companion to modClashLite. Revizto rebinds clash-test sides by NAME on
 '  import, so all the generator needs is the exact set names. Export your
-'  search sets from Revizto as a .vimsst, run this, then GenerateClashTests.
+'  search sets from Revizto as a .vimsst, run this, then ExportClashTests.
 '
 '  Paste this ENTIRE text into a NEW standard module (Alt+F11: Insert > Module).
 '  Run: ImportSetsFromVimsst   (it shows a file picker).
 '
 '  Writes the "Sets" sheet:
 '     A = Set name (exactly as stored in the .vimsst) - this is what's used
-'     B = Folder it lived under in Revizto (reference only - ignored by the
-'         generator; handy for spotting sets you don't want and deleting them)
 '  Existing names in column A are replaced (you'll be asked to confirm first).
 '
 '  .vimsst format is reverse-engineered (see docs/vimctst-format.md for the
@@ -52,24 +50,21 @@ Public Sub ImportSetsFromVimsst()
                   vbExclamation Or vbOKCancel, "Replace existing sets?") <> vbOK Then
             Exit Sub
         End If
-        ws.Range("A2:B" & lastRow).Clear
+        ws.Range("A2:A" & lastRow).Clear
     End If
 
-    ' ---- headers + write names (col A) and folders (col B, reference only) ----
+    ' ---- header + write names (col A) ----
     ws.Range("A1").Value = "Search Set Names"
-    ws.Range("B1").Value = "Folder (reference only - ignored)"
 
     Dim i As Long
     For i = 1 To names.Count
         ws.Cells(i + 1, 1).Value = names(i)
-        ws.Cells(i + 1, 2).Value = folders(i)
     Next i
 
-    ws.Columns("A:B").AutoFit
+    ws.Columns("A").AutoFit
 
     MsgBox names.Count & " set name(s) imported into '" & SHEET_SETS & "' column A." & vbCrLf & vbCrLf & _
-           "Column B shows each set's Revizto folder (for reference - the generator ignores it). " & _
-           "Delete any rows you don't want, then run GenerateClashTests.", vbInformation
+           "Delete any rows you don't want, then run ExportClashTests.", vbInformation
 End Sub
 
 

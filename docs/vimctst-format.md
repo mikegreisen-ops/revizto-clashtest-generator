@@ -41,7 +41,10 @@ Each test spans one record in each array. They are joined by GUIDs:
 | `f1` | rule GUID (== `field5.f7`) |
 | `f2` | **Element A** side |
 | `f3` | **Element B** side |
-| `f4`–`f11` | clearance / tolerance / colour / display settings |
+| `f4` | clash **mode + distance** — `f4.f3` = 3× float32 distance **[horizontal, vertical, horizontal]** (**feet**), `f4.f4` = mode (`0` none, `1` clearance, `2` tolerance, `3` directional clearance) |
+| `f9` | `f9.f1.f3.f1` = float32 **grouping** distance (feet) |
+| `f10` | **priority + stamp** — `f6` = priority (`1` Trivial … `5` Blocker, `0` none); `f1` = flag bits (priority sets `4`, stamp sets `1`); `f4` = stamp code string; `f11` = stamp GUID (16 raw bytes) |
+| `f5`–`f8`, `f11` | colour / display / report settings (cloned from template) |
 
 Each **side** (`f2`/`f3`) is:
 ```
@@ -56,10 +59,32 @@ f2[]  = path strings, e.g. "Clash Detection","00_Categories","<folder>","<set na
   generated test can carry a fabricated GUID and any folder path; only the name must match a real
   set in the target project. A name with no match imports with a warning and a "re-select from list"
   prompt (no corruption).
-- **Settings don't matter for generation.** Clearance/tolerance/colour are cloned from a template and
-  bulk-edited in Revizto afterward. The clearance shown in a test *name* is just a label.
+- **Most settings are cloned from a template** and bulk-edited in Revizto afterward — colour, display,
+  report flags. But **clearance/tolerance, clash mode (incl. directional), grouping distance, priority
+  and stamp are now decoded** and can be written per test (see "Per-test settings" below).
 - **GUID byte order:** the 16 raw bytes equal `Guid.ToByteArray()` of the 36-char string form
   (.NET little-endian for the first three components). Freshly minted GUIDs are already in that order.
+
+## Per-test settings (decoded 2026-06-11)
+
+Distances are stored in **feet** — multiply mm by `1/304.8`. Located by single-variable diff-probes:
+export two tests differing in exactly one setting, diff the bytes (see `diff_vimctst.ps1`).
+
+| Setting | Bytes | Encoding |
+|---|---|---|
+| Clearance / tolerance distance | `field6.f4.f3.{f1,f2,f3}` | 3× float32, **feet** — axes **[horizontal, vertical, horizontal]**; all equal for a uniform distance, different for directional clearance |
+| Clash mode | `field6.f4.f4` | varint — `0` none, `1` clearance (uniform), `2` tolerance, `3` directional clearance |
+| Grouping distance | `field6.f9.f1.f3.f1` | float32, feet |
+| Priority | `field6.f10.f6` | varint — `1` Trivial, `2` Minor, `3` Major, `4` Critical, `5` Blocker, `0` none (`f10.f1` flag bit `4` set when present) |
+| Stamp | `field6.f10` | `f1` flag bit `1`, `f4`=code string (e.g. `"0AR"`), `f11`=GUID (16 raw bytes) |
+
+**Stamps bind by code, not GUID** — like search sets. Revizto re-matches a test's stamp to the
+project's stamp by the **code string** (`f10.f4`); the stamp GUID (`f10.f11`) is cosmetic. Proven by
+importing a test with the right code but a garbage GUID (the `STAMP_BADGUID` probe) — the stamp bound
+fine. So a generator needs only the code and can fabricate the GUID.
+
+The original sample test carried **no stamp** (`f10` had no `f4`/`f11`), so adding a stamp *inserts*
+those sub-fields and grows `f10` — unlike clearance, which is a fixed-length overwrite of existing floats.
 
 ## Generating a file
 
