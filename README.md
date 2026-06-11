@@ -123,10 +123,10 @@ Already built tests in Revizto and want to bulk-change their settings? Export th
 
 ## A couple of gotchas
 
-- **OneDrive / SharePoint:** the macro saves the `.vimctst` next to the workbook. If the workbook lives
-  in a synced OneDrive/SharePoint folder, that can fail (Excel sees a web address, not a real path —
-  run-time error 52), and Revizto's own exports to synced folders sometimes save as empty files. **Work
-  from a normal local folder** (e.g. `C:\Temp\`) and copy files back afterwards.
+- **Saving from OneDrive / SharePoint:** the **Export** Save dialog defaults to the workbook's folder.
+  If that's a synced OneDrive/SharePoint folder, just point the dialog at a **normal local folder**
+  (e.g. `C:\Temp\`) instead. (Revizto's *own* exports to synced folders can also save as empty files, so
+  a local folder is the safe habit either way.)
 - **Names must match.** A clash test binds to your sets by **name** (and a stamp by its **code**). If a
   name/code doesn't match anything in your Revizto project, that side imports with a warning and a
   "re-select from list" prompt — harmless, but you'll have to fix it. Importing your set names (step 2)
