@@ -759,10 +759,9 @@ Private Sub LayOutTestsSheet(ByVal wsT As Worksheet)
     wsT.Range("A1:F1").Value = Array("Test Name", "Tolerance (mm)", "Clearance (mm)", "Priority", "Stamp", "Type")
     wsT.Cells(1, COL_SETA).Value = "Set A"
     wsT.Cells(1, COL_SETB).Value = "Set B"
-    wsT.Columns("A").AutoFit                                  ' Test Name fits its content
-    wsT.Columns("B:E").ColumnWidth = 16                       ' the four setting columns: equal + wider
+    wsT.Columns("A").AutoFit                                  ' Test Name fits its content (names can be long)
+    wsT.Columns("B:F").ColumnWidth = 24                       ' setting columns + Type: equal, roomy
     wsT.Columns("B:F").HorizontalAlignment = xlCenter         ' settings + Type centred
-    wsT.Columns("F").AutoFit                                  ' Type fits "Cross"/"Self"
     With wsT.Range("A1:F1")                                   ' header row: dark-grey box, white bold text
         .HorizontalAlignment = xlCenter
         .Font.Bold = True

@@ -61,6 +61,7 @@ try {
     $sets.Cells.Clear() | Out-Null
     $sets.Range('A1').Value2 = 'Search Set Names'
     $sets.Range('A1').Font.Bold = $true
+    $sets.Columns.Item('A').ColumnWidth = 38
 
     # ---- 3. Tests sheet (mirrors LayOutTestsSheet) ----
     $t = Get-Sheet $wb 'Tests'
@@ -70,9 +71,8 @@ try {
     $t.Cells.Item(1,25).Value2 = 'Set A'      # Y
     $t.Cells.Item(1,26).Value2 = 'Set B'      # Z
     $t.Columns.Item('A').AutoFit() | Out-Null
-    $t.Columns.Item('B:E').ColumnWidth = 16
+    $t.Columns.Item('B:F').ColumnWidth = 24
     $t.Columns.Item('B:F').HorizontalAlignment = $xlCenter
-    $t.Columns.Item('F').AutoFit() | Out-Null
     $th = $t.Range('A1:F1')
     $th.HorizontalAlignment = $xlCenter
     $th.Font.Bold = $true; $th.Font.Color = $WHITE; $th.Interior.Color = $GREY
