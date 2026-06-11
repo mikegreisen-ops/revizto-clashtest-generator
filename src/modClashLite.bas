@@ -229,11 +229,23 @@ Public Sub ExportClashTests()
     End If
     Dim rowsArr As Variant: rowsArr = wsT.Range("A2:Z" & last).Value
 
+    ' rows hidden by the AutoFilter (or hidden manually) count as excluded, so "filter out the
+    ' Self-pairs" really leaves them out of the file. Collect the set of VISIBLE sheet rows.
+    Dim visRows As Object: Set visRows = CreateObject("Scripting.Dictionary")
+    Dim vArea As Range, vr0 As Long
+    On Error Resume Next
+    For Each vArea In wsT.Range("A2:A" & last).SpecialCells(xlCellTypeVisible).Areas
+        For vr0 = vArea.Row To vArea.Row + vArea.Rows.Count - 1
+            visRows(vr0) = True
+        Next vr0
+    Next vArea
+    On Error GoTo 0
+
     ' ---- validate: a test may have Tol OR Clr, never both. Stop + list any that have both. ----
     Dim vr As Long, nConflict As Long, conflicts As String, dT As Double, dC As Double, vName As String
     For vr = 1 To UBound(rowsArr, 1)
         vName = Trim$(CStr(rowsArr(vr, COL_NAME) & ""))
-        If Len(vName) > 0 Then
+        If Len(vName) > 0 And visRows.Exists(vr + 1) Then
             If ParseMm(CStr(rowsArr(vr, COL_TOL) & ""), dT) And ParseMm(CStr(rowsArr(vr, COL_CLR) & ""), dC) Then
                 nConflict = nConflict + 1
                 If nConflict <= 15 Then conflicts = conflicts & vbCrLf & "  - " & vName
@@ -270,7 +282,7 @@ Public Sub ExportClashTests()
     Dim paths(0 To 3) As String
     paths(0) = "Clash Detection": paths(1) = "00_Categories": paths(2) = "Sets"
 
-    Dim r As Long, gen As Long, skipped As Long, badPrioCount As Long
+    Dim r As Long, gen As Long, skipped As Long, badPrioCount As Long, hiddenCount As Long
     Dim testName As String, nameA As String, nameB As String, pvs As Long
     Dim sTol As String, sClr As String, sPrio As String, sStamp As String
     Dim gT() As Byte, gM() As Byte, gR() As Byte, nameBytes() As Byte, tailDyn() As Byte
@@ -280,6 +292,7 @@ Public Sub ExportClashTests()
     For r = 1 To UBound(rowsArr, 1)
         testName = Trim$(CStr(rowsArr(r, COL_NAME) & ""))
         If Len(testName) > 0 Then
+          If visRows.Exists(r + 1) Then
             nameA = Trim$(CStr(rowsArr(r, COL_SETA) & ""))
             nameB = Trim$(CStr(rowsArr(r, COL_SETB) & ""))
             ' fallback for a hand-added row: split the test name on " vs "
@@ -347,6 +360,9 @@ Public Sub ExportClashTests()
             Else
                 skipped = skipped + 1
             End If
+          Else
+            hiddenCount = hiddenCount + 1
+          End If
         End If
     Next r
 
@@ -380,6 +396,7 @@ Public Sub ExportClashTests()
 
     Dim msg As String
     msg = gen & " clash tests written in " & Format(genSecs, "0.0") & "s" & vbCrLf & outPath
+    If hiddenCount > 0 Then msg = msg & vbCrLf & vbCrLf & hiddenCount & " filtered/hidden row(s) were NOT exported."
     If skipped > 0 Then msg = msg & vbCrLf & vbCrLf & skipped & " row(s) skipped (no Set A / Set B - rebuild with BuildTestList)."
     If badPrioCount > 0 Then msg = msg & vbCrLf & badPrioCount & " row(s) had an unrecognised Priority - treated as none (use Trivial/Minor/Major/Critical/Blocker)."
     MsgBox msg, vbInformation
@@ -753,6 +770,11 @@ Private Sub LayOutTestsSheet(ByVal wsT As Worksheet)
         .Interior.Color = RGB(64, 64, 64)
     End With
     wsT.Range(wsT.Cells(1, COL_SETA), wsT.Cells(1, COL_SETB)).EntireColumn.Hidden = True
+    ' filter dropdowns on the header row (e.g. open the Type dropdown and untick "Self")
+    On Error Resume Next
+    wsT.AutoFilterMode = False                                ' clear any stale filter first
+    On Error GoTo 0
+    wsT.Range("A1").AutoFilter                                ' applies to A1's region (A:F, header + data)
 End Sub
 
 Private Function EnsureSheet(ByVal nm As String) As Worksheet

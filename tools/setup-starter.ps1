@@ -77,6 +77,8 @@ try {
     $th.HorizontalAlignment = $xlCenter
     $th.Font.Bold = $true; $th.Font.Color = $WHITE; $th.Interior.Color = $GREY
     $t.Range($t.Cells.Item(1,25), $t.Cells.Item(1,26)).EntireColumn.Hidden = $true
+    if ($t.AutoFilterMode) { $t.AutoFilterMode = $false }
+    $t.Range('A1').AutoFilter() | Out-Null      # header-row filter dropdowns (incl. Type)
 
     # ---- 4. Instructions sheet (text + buttons) ----
     $ins = Get-Sheet $wb 'Instructions'

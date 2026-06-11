@@ -93,7 +93,7 @@ On the `Instructions` sheet (or via `Alt+F8` by the macro name):
 | **Clearance (mm)** | a required gap — clashes when things are *closer* than this | *(blank)* |
 | **Priority** | `Trivial` / `Minor` / `Major` / `Critical` / `Blocker` | `Minor` |
 | **Stamp** | a Revizto stamp code, e.g. `0AR` (blank = no stamp) | *(blank)* |
-| **Type** | `Self` or `Cross` — auto-filled; **filter on it to bulk-remove self-pairs** (ignored on export) | auto |
+| **Type** | `Self` or `Cross` — auto-filled. Use the header **filter** to untick `Self`: hidden rows are **left out of the export** (the Type value itself isn't written to the file). | auto |
 
 (Two more columns, **Set A** and **Set B**, are hidden far to the right — the tool needs them, you
 don't.)
