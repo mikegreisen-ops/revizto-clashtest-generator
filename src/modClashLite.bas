@@ -85,8 +85,9 @@ Private Const GRP_MM    As Double = 15000
 ' embedded clash-test byte template (current Revizto schema; GUIDs added per-test).
 ' header / field4-tail / field5 are unchanged from the older template; only field6 grew
 ' (it now carries f7 name-template, f8, f9 grouping, f10 priority/stamp, f11 display).
-' HEX_TAIL6 below was re-harvested 2026-06-11 from a clean "tolerance 25mm, no priority"
-' export so the per-test pokes have real slots to write into.
+' HEX_TAIL6 below was re-harvested 2026-06-11 from a clean "tolerance 25mm, no priority" export
+' (Revizto 1.17.6) so the per-test pokes have real slots to write into. If a newer Revizto version
+' breaks import, re-harvest this constant from a fresh single-test export.
 Private Const HEX_HEADER As String = "0A0B52436C617368546573747310011800"
 Private Const HEX_TAIL4  As String = "20002801300038004800"
 Private Const HEX_T5      As String = "0A1071347EF77093E54198BF66EFF01A861612107C5D60A1F2D9814AA19E1E939AFC95F71800200030003A109CBE1B0D8C76A244A613346CDC703A2A82012508001000180020002800300038004000480050005800600068007000800100880100900100880100980100A80100B80101C00103"

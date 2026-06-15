@@ -12,6 +12,9 @@ the result into Revizto.
 > **reverse-engineered** — Revizto don't document or support it, and it can change between versions.
 > **Revizto have kindly approved sharing this**, but it isn't a Revizto product and they don't maintain
 > or back it — so **always keep backups and work on copies**. Use at your own risk.
+>
+> *Built and validated against **Revizto 1.17.6** (Windows). A newer version could change the format —
+> if a generated file won't import or settings don't land, that's the likely cause.*
 
 ---
 

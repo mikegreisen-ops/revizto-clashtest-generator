@@ -4,6 +4,9 @@ A `.vimctst` is a binary **protobuf** stream (length-delimited fields), header `
 file-wide checksum, so records can be generated/edited and re-imported. Don't open it in a text
 editor — it will corrupt.
 
+> Decoded against **Revizto 1.17.6** (Windows). The format isn't documented and can change between
+> versions; if a later version breaks generation, re-harvest the embedded template from a fresh export.
+
 ## Top-level layout
 
 The file is **three parallel arrays**, grouped (not interleaved), joined by GUIDs:
